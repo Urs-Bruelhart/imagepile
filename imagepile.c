@@ -22,7 +22,7 @@
 
 /* Statistics variables */
 uint64_t stats_total_searches = 0;
-uint32_t stats_hash_failures = 0;
+uint64_t stats_hash_failures = 0;
 
 /* Global hash prefix starting array */
 struct hash_leaf *hash_top[65536];
@@ -60,7 +60,9 @@ hash_t block_hash(const hash_t *data, const int count)
 
 	len = count / sizeof(hash_t);
 	for (; len > 0; len--) {
+		hash += (*data & (hash_t)0x000000ff);
 		hash ^= (*data);
+		hash += (*data & (hash_t)0xffffff00);
 		hash = (hash << HASH_SHIFT) | hash >> (sizeof(hash_t) * 8 - HASH_SHIFT);
 		data++;
 	}
@@ -209,14 +211,10 @@ int compare_blocks(const void *blk1, const int offset, struct files_t *files)
 	/* Compare first machine word before calling memcmp */
 	check1 = (int *)blk1;
 	check2 = (int *)blk2;
-	if (*check1 != *check2) {
-		return -1;
-	}
+	if (*check1 != *check2) return -1;
 
 	/* Compare the entire block */
-	if (!memcmp(blk1, blk2, B_SIZE)) {
-		return 0;
-	}
+	if (!memcmp(blk1, blk2, B_SIZE)) return 0;
 
 	return -1;
 }
@@ -313,7 +311,7 @@ int input_image(struct files_t *files, uint32_t start_offset)
 			temp = ftello(files->in);
 			temp /= size;
 			if (temp > percent) {
-				fprintf(stderr, "\r%lu%% complete (%d hash fails) ",
+				fprintf(stderr, "\r%lu%% complete (%ld hash fails) ",
 				temp, stats_hash_failures);
 				percent = temp;
 			}
@@ -554,7 +552,7 @@ int main(int argc, char **argv)
 		fflush(files->hashindex);
 		fclose(files->hashindex);
 		/* Output final statistics */
-		fprintf(stderr, "Stats: %lu total searches, %u hash failures\n",
+		fprintf(stderr, "Stats: %lu total searches, %lu hash failures\n",
 			stats_total_searches, stats_hash_failures);
 	}
 	if (!strncmp(argv[1], "read", PATH_MAX)) output_original(files);
