@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <signal.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -27,22 +28,23 @@ uint64_t stats_hash_failures = 0;
 /* Global hash prefix starting array */
 struct hash_leaf *hash_top[65536];
 
+/* Signal stuff */
+int siglock = 0;
+int sigterm = 0;
+
 /* Debugging function: print a hash in hexadecimal */
 void print_hash(hash_t hash)
 {
 	fprintf(stderr, "%016lx\n", hash);
 }
 
-/* Add more memory for hash storage */
-int alloc_hash_memory()
+/* Handle signals */
+void sig_handler(int signo)
 {
-	DLOG("alloc_hash_memory\n");
-
-	goto oom;
-	return 0;
-oom:
-	fprintf(stderr, "Error: out of memory\n");
-	exit(EXIT_FAILURE);
+	if (!siglock) {
+		fprintf(stderr, "\n\nCaught signal %d, terminating\n", signo);
+		exit(EXIT_FAILURE);
+	} else sigterm = 1;
 }
 
 /* Hash a block of arbitrary size; must be divisible by sizeof(hash_t) */
@@ -266,10 +268,18 @@ int get_block_offset(const void *blk, struct files_t *files)
 	}
 
 	/* Hash not found in the hash list, so add it to the database */
+	siglock = 1;
 	offset = add_db_block(blk, hash, files);
 	/* ...and add it to the hash index */
 	index_hash(hash, offset, 1, files);
 	DLOG("Indexed new hash at offset %d\n", offset);
+	siglock = 0;
+	if (sigterm) {
+		fflush(files->db);
+		fflush(files->hashindex);
+		fflush(files->out);
+		exit(EXIT_FAILURE);
+	}
 
 	return offset;
 }
@@ -499,6 +509,12 @@ int main(int argc, char **argv)
 		leaf++;
 	}
 
+	/* Set up signal handler */
+	if (signal(SIGINT, sig_handler) == SIG_ERR) goto signal_error;
+	if (signal(SIGTERM, sig_handler) == SIG_ERR) goto signal_error;
+	if (signal(SIGABRT, sig_handler) == SIG_ERR) goto signal_error;
+	if (signal(SIGHUP, sig_handler) == SIG_ERR) goto signal_error;
+
 	/* Open master block database */
 	if (!(files->db = fopen(files->dbfile, "a+"))) {
 		fprintf(stderr, "Error: cannot open DB: %s\n", files->dbfile);
@@ -570,6 +586,10 @@ int main(int argc, char **argv)
 oom:
 	/* If any malloc() fails, end up here. */
 	fprintf(stderr, "Error: out of memory\n");
+	exit(EXIT_FAILURE);
+
+signal_error:
+	fprintf(stderr, "Cannot catch signals, aborting.\n");
 	exit(EXIT_FAILURE);
 
 usage:

@@ -63,7 +63,6 @@ struct hash_leaf {
 };
 
 void print_hash(hash_t);
-int alloc_hash_memory();
 hash_t block_hash(const hash_t *, const int);
 int find_hash_match(const hash_t, int);
 int index_hash(const hash_t, const int, const int, struct files_t *);
