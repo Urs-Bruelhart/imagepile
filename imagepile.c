@@ -50,7 +50,7 @@ void sig_handler(int signo)
 /* Hash a block of arbitrary size; must be divisible by sizeof(hash_t) */
 hash_t block_hash(const hash_t *data, const int count)
 {
-	volatile hash_t hash = 0;
+	hash_t hash = 0;
 	unsigned int len;
 	const hash_t mask = (sizeof(hash_t) - 1);
 
