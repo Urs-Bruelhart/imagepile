@@ -475,6 +475,7 @@ int main(int argc, char **argv)
 	struct hash_leaf *leaf;
 	uint32_t start_offset = 0;
 	int offset = 0;
+	struct sigaction act;
 
 	fprintf(stderr, "Imagepile disk image database utility %s (%s)\n", VER, VERDATE);
 	/* Handle arguments */
@@ -510,10 +511,12 @@ int main(int argc, char **argv)
 	}
 
 	/* Set up signal handler */
-	if (signal(SIGINT, sig_handler) == SIG_ERR) goto signal_error;
-	if (signal(SIGTERM, sig_handler) == SIG_ERR) goto signal_error;
-	if (signal(SIGABRT, sig_handler) == SIG_ERR) goto signal_error;
-	if (signal(SIGHUP, sig_handler) == SIG_ERR) goto signal_error;
+	memset (&act, 0, sizeof(act));
+	act.sa_handler = sig_handler;
+	if (sigaction(SIGINT, &act, 0)) goto signal_error;
+	if (sigaction(SIGTERM, &act, 0)) goto signal_error;
+	if (sigaction(SIGABRT, &act, 0)) goto signal_error;
+	if (sigaction(SIGHUP, &act, 0)) goto signal_error;
 
 	/* Open master block database */
 	if (!(files->db = fopen(files->dbfile, "a+"))) {
