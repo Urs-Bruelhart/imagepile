@@ -1,9 +1,9 @@
 CC=gcc
 #CFLAGS=-Os -flto -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables
-CFLAGS=-O2 -flto
+CFLAGS=-O2
 #CFLAGS=-Og -g3
 BUILD_CFLAGS=-std=gnu99 -I. -D_FILE_OFFSET_BITS=64 -pipe -Wall -pedantic
-LDFLAGS=-s -Wl,--gc-sections
+#LDFLAGS=-s -Wl,--gc-sections
 #LDFLAGS=
 
 prefix=/usr
@@ -16,8 +16,8 @@ sysconfdir=${prefix}/etc
 
 all: imagepile
 
-imagepile: imagepile.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $(BUILD_CFLAGS) -o imagepile imagepile.o
+imagepile: imagepile.o jody_hash.o
+	$(CC) $(CFLAGS) $(LDFLAGS) $(BUILD_CFLAGS) -o imagepile imagepile.o jody_hash.o
 
 #manual:
 #	gzip -9 < imagepile.8 > imagepile.8.gz

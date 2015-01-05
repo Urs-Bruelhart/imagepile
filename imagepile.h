@@ -2,6 +2,11 @@
  * Image pile headers
  */
 
+#ifndef __IMAGEPILE_H
+#define __IMAGEPILE_H
+
+#include "jody_hash.h"
+
 #define VER "0.1"
 #define VERDATE "2014-11-18"
 /* #define DEBUG 1 */
@@ -23,16 +28,10 @@
  * DO NOT CHANGE UNLESS YOU KNOW WHAT YOU ARE DOING! */
 #define B_SIZE 4096
 
-/* Hash tuning. DO NOT CHANGE because it will no longer
- * work properly with any existing data that does not
- * use the same HASH_SHIFT value */
-#define HASH_SHIFT 11
-
 /* How many hash table entries to allocate at once */
 #define HASH_ALLOC_SIZE 64
 
 /* Hash type and macro definitions */
-typedef uint64_t hash_t;
 typedef uint16_t hash_head_t;
 /* Extract hash_head_t from a hash_t */
 #define HASH_HEAD(x) (hash_head_t)(x >> ((sizeof(hash_t) - sizeof(hash_head_t)) * 8))
@@ -62,14 +61,13 @@ struct hash_leaf {
 	struct hash_node node[HASH_ALLOC_SIZE];
 };
 
-void print_hash(hash_t);
-hash_t block_hash(const hash_t *, const int);
-int find_hash_match(const hash_t, int);
-int index_hash(const hash_t, const int, const int, struct files_t *);
-int read_db_block(void *, const int, struct files_t *);
-int compare_blocks(const void *, const int, struct files_t *);
-int add_db_block(const void *, hash_t, struct files_t *);
-int get_block_offset(const void *, struct files_t *);
-int input_image(struct files_t *, uint32_t);
-int output_original(struct files_t *);
+static int find_hash_match(const hash_t, int);
+static int index_hash(const hash_t, const int, const int, struct files_t *);
+static int read_db_block(void *, const int, struct files_t *);
+static int compare_blocks(const void *, const int, struct files_t *);
+static int add_db_block(const void *, hash_t, struct files_t *);
+static int get_block_offset(const void *, struct files_t *);
+static int input_image(struct files_t *, uint32_t);
+static int output_original(struct files_t *);
 
+#endif	/* __IMAGEPILE_H */

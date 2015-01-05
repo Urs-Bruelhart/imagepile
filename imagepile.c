@@ -20,6 +20,7 @@
 #include <fcntl.h>
 #include <limits.h>
 #include "imagepile.h"
+#include "jody_hash.h"
 
 /* Statistics variables */
 uint64_t stats_total_searches = 0;
@@ -32,11 +33,13 @@ struct hash_leaf *hash_top[65536];
 int siglock = 0;
 int sigterm = 0;
 
+#if 0
 /* Debugging function: print a hash in hexadecimal */
-void print_hash(hash_t hash)
+static void print_hash(hash_t hash)
 {
 	fprintf(stderr, "%016lx\n", hash);
 }
+#endif
 
 /* Handle signals */
 void sig_handler(int signo)
@@ -47,34 +50,10 @@ void sig_handler(int signo)
 	} else sigterm = 1;
 }
 
-/* Hash a block of arbitrary size; must be divisible by sizeof(hash_t) */
-hash_t block_hash(const hash_t *data, const int count)
-{
-	hash_t hash = 0;
-	unsigned int len;
-	const hash_t mask = (sizeof(hash_t) - 1);
-
-	DLOG("block_hash\n");
-	if ((count & mask) != 0) {
-		fprintf(stderr, "Error: block_hash received invalid length %d\n", count);
-		exit(EXIT_FAILURE);
-	}
-
-	len = count / sizeof(hash_t);
-	for (; len > 0; len--) {
-		hash += (*data & (hash_t)0x000000ff);
-		hash ^= (*data);
-		hash += (*data & (hash_t)0xffffff00);
-		hash = (hash << HASH_SHIFT) | hash >> (sizeof(hash_t) * 8 - HASH_SHIFT);
-		data++;
-	}
-	return hash;
-}
-
 /* Find the next instance of a hash in the master hash table
  * entry is used to resume search in case of a failed match
  * Returns offset to match or -1 if no match found */
-int find_hash_match(const hash_t hash, int reset)
+static int find_hash_match(const hash_t hash, int reset)
 {
 	static struct hash_leaf *leaf;
 	static struct hash_node *node;
@@ -127,7 +106,7 @@ not_found:
 }
 
 /* Add hash to memory hash table (and optionally to hash index file) */
-int index_hash(const hash_t hash, const int offset, const int write, struct files_t *files)
+static int index_hash(const hash_t hash, const int offset, const int write, struct files_t *files)
 {
 	int i, leaf_cnt = 1;
 	struct hash_leaf *leaf;
@@ -178,7 +157,7 @@ oom:
 
 /* Read a block from the block database */
 /* This may be enhanced with compression functionality later */
-int read_db_block(void *blk, const int offset, struct files_t *files)
+static int read_db_block(void *blk, const int offset, struct files_t *files)
 {
 	int i;
 
@@ -198,7 +177,7 @@ int read_db_block(void *blk, const int offset, struct files_t *files)
 }
 
 /* Compare an input block against a block in the block database */
-int compare_blocks(const void *blk1, const int offset, struct files_t *files)
+static int compare_blocks(const void *blk1, const int offset, struct files_t *files)
 {
 	int *check1, *check2;
 	unsigned char blk2[B_SIZE];
@@ -223,7 +202,7 @@ int compare_blocks(const void *blk1, const int offset, struct files_t *files)
 
 /* Append a block to the block db, returning offset in B_SIZE blocks */
 /* This may be enhanced with compression functionality later */
-int add_db_block(const void *blk, hash_t hash, struct files_t *files)
+static int add_db_block(const void *blk, hash_t hash, struct files_t *files)
 {
 	int offset;
 	int i;
@@ -247,14 +226,14 @@ error_write:
 }
 
 /* Add an incoming block to (or find in) the databse; return its offset */
-int get_block_offset(const void *blk, struct files_t *files)
+static int get_block_offset(const void *blk, struct files_t *files)
 {
 	hash_t hash;
 	int offset = 0;
 	int reset = 1;
 
 	DLOG("get_block_offset\n");
-	hash = block_hash((hash_t *)blk, B_SIZE);
+	hash = jody_block_hash((hash_t *)blk, 0, B_SIZE);
 
 	/* Search existing hashes for a match until they are exhausted */
 	while (1) {
@@ -284,7 +263,7 @@ int get_block_offset(const void *blk, struct files_t *files)
 	return offset;
 }
 
-int input_image(struct files_t *files, uint32_t start_offset)
+static int input_image(struct files_t *files, uint32_t start_offset)
 {
 	const uint32_t z = B_SIZE;
 	unsigned char blk[B_SIZE];
@@ -364,7 +343,7 @@ int input_image(struct files_t *files, uint32_t start_offset)
 	return 0;
 }
 
-int output_original(struct files_t *files)
+static int output_original(struct files_t *files)
 {
 	int i, written = 0;
 	size_t w;
@@ -485,7 +464,7 @@ int main(int argc, char **argv)
 		strncat(path, "/imagepile.db", PATH_MAX);
 		strncpy(files->dbfile, path, PATH_MAX);
 		strncpy(path, p, PATH_MAX);
-		strncat(path, "/imagepile.index", PATH_MAX);
+		strncat(path, "/imagepile.hash_index", PATH_MAX);
 		strncpy(files->indexfile, path, PATH_MAX);
 	} else {
 		fprintf(stderr, "Error: IMGDIR environment variable not set\n");
@@ -498,6 +477,10 @@ int main(int argc, char **argv)
 			files->dbfile, files->indexfile,
 			files->infile, files->outfile);
 
+	if (!strncmp(files->infile, files->outfile, PATH_MAX)) {
+		fprintf(stderr, "Input and output files must be different. Aborting.\n");
+		exit(EXIT_FAILURE);
+	}
 	/* Initialize hash leaves */
 	leaf = (struct hash_leaf *)malloc(sizeof(struct hash_leaf) * 65536);
 	if (!leaf) goto oom;
