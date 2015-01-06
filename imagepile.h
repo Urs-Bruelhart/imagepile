@@ -33,19 +33,20 @@
 
 /* Hash type and macro definitions */
 typedef uint16_t hash_head_t;
+
 /* Extract hash_head_t from a hash_t */
 #define HASH_HEAD(x) (hash_head_t)(x >> ((sizeof(hash_t) - sizeof(hash_head_t)) * 8))
 
 /* Master block database */
 struct files_t {
 	char dbfile[PATH_MAX];
-	FILE *db;
+	FILE * restrict db;
 	char indexfile[PATH_MAX];
-	FILE *hashindex;
+	FILE * restrict hashindex;
 	char infile[PATH_MAX];
-	FILE *in;
+	FILE * restrict in;
 	char outfile[PATH_MAX];
-	FILE *out;
+	FILE * restrict out;
 };
 
 /* Hash leaf table entries */
@@ -60,14 +61,5 @@ struct hash_leaf {
 	unsigned int entries;	
 	struct hash_node node[HASH_ALLOC_SIZE];
 };
-
-static int find_hash_match(const hash_t, int);
-static int index_hash(const hash_t, const int, const int, struct files_t *);
-static int read_db_block(void *, const int, struct files_t *);
-static int compare_blocks(const void *, const int, struct files_t *);
-static int add_db_block(const void *, hash_t, struct files_t *);
-static int get_block_offset(const void *, struct files_t *);
-static int input_image(struct files_t *, uint32_t);
-static int output_original(struct files_t *);
 
 #endif	/* __IMAGEPILE_H */

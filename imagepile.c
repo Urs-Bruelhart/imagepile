@@ -33,16 +33,8 @@ struct hash_leaf *hash_top[65536];
 int siglock = 0;
 int sigterm = 0;
 
-#if 0
-/* Debugging function: print a hash in hexadecimal */
-static void print_hash(hash_t hash)
-{
-	fprintf(stderr, "%016lx\n", hash);
-}
-#endif
-
 /* Handle signals */
-void sig_handler(int signo)
+void sig_handler(const int signo)
 {
 	if (!siglock) {
 		fprintf(stderr, "\n\nCaught signal %d, terminating\n", signo);
@@ -53,13 +45,12 @@ void sig_handler(int signo)
 /* Find the next instance of a hash in the master hash table
  * entry is used to resume search in case of a failed match
  * Returns offset to match or -1 if no match found */
-static int find_hash_match(const hash_t hash, int reset)
+static int find_hash_match(const hash_t hash, const int reset)
 {
-	static struct hash_leaf *leaf;
-	static struct hash_node *node;
+	static struct hash_leaf * restrict leaf;
+	static struct hash_node * restrict node;
 	static int rel_offset;	/* Offset in current table */
 	static int dirty = 1;	/* Always reset on first run */
-/*	struct hash_node swap_node; */
 
 	DLOG("find_hash_match: hash %016lx, r %d, d %d\n", hash, reset, dirty);
 
@@ -106,7 +97,8 @@ not_found:
 }
 
 /* Add hash to memory hash table (and optionally to hash index file) */
-static int index_hash(const hash_t hash, const int offset, const int write, struct files_t *files)
+static int index_hash(const hash_t hash, const int offset, const int write,
+		const struct files_t * const restrict files)
 {
 	int i, leaf_cnt = 1;
 	struct hash_leaf *leaf;
@@ -157,7 +149,8 @@ oom:
 
 /* Read a block from the block database */
 /* This may be enhanced with compression functionality later */
-static int read_db_block(void *blk, const int offset, struct files_t *files)
+static int read_db_block(void * const restrict blk,
+		const int offset, const struct files_t * const restrict files)
 {
 	int i;
 
@@ -177,10 +170,12 @@ static int read_db_block(void *blk, const int offset, struct files_t *files)
 }
 
 /* Compare an input block against a block in the block database */
-static int compare_blocks(const void *blk1, const int offset, struct files_t *files)
+static int compare_blocks(const void *blk1, const int offset,
+		const struct files_t * const restrict files)
 {
-	int *check1, *check2;
+	const int * const check1 = (int *)blk1;
 	unsigned char blk2[B_SIZE];
+	const int * const check2 = (int *)blk2;
 
 	DLOG("compare_blocks, offset %d\n", offset);
 
@@ -190,8 +185,6 @@ static int compare_blocks(const void *blk1, const int offset, struct files_t *fi
 	read_db_block(blk2, offset, files);
 
 	/* Compare first machine word before calling memcmp */
-	check1 = (int *)blk1;
-	check2 = (int *)blk2;
 	if (*check1 != *check2) return -1;
 
 	/* Compare the entire block */
@@ -202,7 +195,8 @@ static int compare_blocks(const void *blk1, const int offset, struct files_t *fi
 
 /* Append a block to the block db, returning offset in B_SIZE blocks */
 /* This may be enhanced with compression functionality later */
-static int add_db_block(const void *blk, hash_t hash, struct files_t *files)
+static int add_db_block(const void * const restrict blk, hash_t hash,
+		const struct files_t * const restrict files)
 {
 	int offset;
 	int i;
@@ -226,7 +220,8 @@ error_write:
 }
 
 /* Add an incoming block to (or find in) the databse; return its offset */
-static int get_block_offset(const void *blk, struct files_t *files)
+static int get_block_offset(const void * const restrict blk,
+		const struct files_t * const restrict files)
 {
 	hash_t hash;
 	int offset = 0;
@@ -263,7 +258,8 @@ static int get_block_offset(const void *blk, struct files_t *files)
 	return offset;
 }
 
-static int input_image(struct files_t *files, uint32_t start_offset)
+static int input_image(const struct files_t * const restrict files,
+		uint32_t start_offset)
 {
 	const uint32_t z = B_SIZE;
 	unsigned char blk[B_SIZE];
@@ -343,7 +339,7 @@ static int input_image(struct files_t *files, uint32_t start_offset)
 	return 0;
 }
 
-static int output_original(struct files_t *files)
+static int output_original(const struct files_t * const restrict files)
 {
 	int i, written = 0;
 	size_t w;
@@ -444,7 +440,7 @@ error_endsize:
 int main(int argc, char **argv)
 {
 	struct files_t file_vars;
-	struct files_t *files = &file_vars;
+	struct files_t * const restrict files = &file_vars;
 	unsigned char blk[B_SIZE];
 	unsigned char path[PATH_MAX];
 	int i;
