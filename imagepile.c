@@ -174,7 +174,7 @@ static int compare_blocks(const void *blk1, const int offset,
 		const struct files_t * const restrict files)
 {
 	const int * const check1 = (int *)blk1;
-	unsigned char blk2[B_SIZE];
+	char blk2[B_SIZE];
 	const int * const check2 = (int *)blk2;
 
 	DLOG("compare_blocks, offset %d\n", offset);
@@ -262,7 +262,7 @@ static int input_image(const struct files_t * const restrict files,
 		uint32_t start_offset)
 {
 	const uint32_t z = B_SIZE;
-	unsigned char blk[B_SIZE];
+	char blk[B_SIZE];
 	int cnt = B_SIZE;
 	uint32_t offset;
 	off_t size = 1, temp;
@@ -345,8 +345,8 @@ static int output_original(const struct files_t * const restrict files)
 	size_t w;
 	uint32_t start_offset, end_size;
 	off_t offset;
-	unsigned char blk[B_SIZE];
-	unsigned char data[B_SIZE];
+	char blk[B_SIZE];
+	char data[B_SIZE];
 	uint32_t *p;
 	off_t size = 1, temp;
 	static int percent = 0;
@@ -441,8 +441,8 @@ int main(int argc, char **argv)
 {
 	struct files_t file_vars;
 	struct files_t * const restrict files = &file_vars;
-	unsigned char blk[B_SIZE];
-	unsigned char path[PATH_MAX];
+	char blk[B_SIZE];
+	char path[PATH_MAX];
 	int i;
 	char *p;
 	unsigned int hashcount = 0;
