@@ -1,10 +1,9 @@
 CC=gcc
-#CFLAGS=-Os -flto -ffunction-sections -fdata-sections -fno-unwind-tables -fno-asynchronous-unwind-tables
-CFLAGS=-O2
+CFLAGS=-O3 -g
 #CFLAGS=-Og -g3
 BUILD_CFLAGS=-std=gnu99 -I. -D_FILE_OFFSET_BITS=64 -pipe -Wall -pedantic
 #LDFLAGS=-s -Wl,--gc-sections
-#LDFLAGS=
+LDFLAGS=
 
 prefix=/usr
 exec_prefix=${prefix}
