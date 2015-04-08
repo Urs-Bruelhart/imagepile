@@ -2,8 +2,8 @@
  * Image pile headers
  */
 
-#ifndef __IMAGEPILE_H
-#define __IMAGEPILE_H
+#ifndef IMAGEPILE_H
+#define IMAGEPILE_H
 
 #include "jody_hash.h"
 
@@ -62,4 +62,4 @@ struct hash_leaf {
 	struct hash_node node[HASH_ALLOC_SIZE];
 };
 
-#endif	/* __IMAGEPILE_H */
+#endif	/* IMAGEPILE_H */
