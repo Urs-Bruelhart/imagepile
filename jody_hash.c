@@ -6,7 +6,7 @@
  * and faster.
  *
  * Copyright (C) 2014-2015 by Jody Bruchon <jody@jodybruchon.com>
- * Released under the terms of the GNU GPL version 2
+ * Released under The MIT License or GNU GPL v2 (your choice)
  */
 
 #include <stdio.h>

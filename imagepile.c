@@ -264,9 +264,7 @@ static int input_image(const struct files_t * const restrict files,
 	const uint32_t z = B_SIZE;
 	char blk[B_SIZE];
 	int cnt = B_SIZE;
-	uint32_t offset;
 	off_t size = 1, temp;
-	static int percent = 0;
 	uint64_t r = 0;
 
 	DLOG("input_image\n");
@@ -285,9 +283,11 @@ static int input_image(const struct files_t * const restrict files,
 
 	/* Read entire input file and hash the blocks, padding if necessary */
 	while (cnt > 0) {
-		if (start_offset > 0) {
-			cnt = fread(blk, 1, (B_SIZE - start_offset), files->in);
-		} else cnt = fread(blk, 1, B_SIZE, files->in);
+		uint32_t offset;
+		static int percent = 0;
+
+		if (start_offset > 0) cnt = fread(blk, 1, (B_SIZE - start_offset), files->in);
+		else cnt = fread(blk, 1, B_SIZE, files->in);
 		if (ferror(files->in)) {
 			fprintf(stderr, "Error reading %s\n", files->infile);
 			exit(EXIT_FAILURE);
@@ -297,7 +297,7 @@ static int input_image(const struct files_t * const restrict files,
 			temp /= size;
 			if (temp > percent) {
 				fprintf(stderr, "\r%lu%% complete (%ld hash fails) ",
-				temp, stats_hash_failures);
+					temp, stats_hash_failures);
 				percent = temp;
 			}
 		}
@@ -344,12 +344,10 @@ static int output_original(const struct files_t * const restrict files)
 	int i, written = 0;
 	size_t w;
 	uint32_t start_offset, end_size;
-	off_t offset;
 	char blk[B_SIZE];
 	char data[B_SIZE];
 	uint32_t *p;
 	off_t size = 1, temp;
-	static int percent = 0;
 
 	DLOG("output_original\n");
 	/* Verify magic number at start of file */
@@ -378,6 +376,9 @@ static int output_original(const struct files_t * const restrict files)
 
 	/* Read image file and write out original data */
 	while((i = fread(blk, 4, (B_SIZE / 4), files->in))) {
+		off_t offset;
+		static int percent = 0;
+
 		/* Iterate through block of offsets */
 		if (ferror(files->in)) goto error_in;
 		if (files->in != stdin) {
