@@ -42,7 +42,7 @@ void sig_handler(const int signo)
 	} else sigterm = 1;
 }
 
-/* Find the next instance of a hash in the master hash table
+/* Find the next instance of a hash in the master hash table.
  * entry is used to resume search in case of a failed match
  * Returns offset to match or -1 if no match found */
 static int find_hash_match(const hash_t hash, const int reset)
@@ -478,17 +478,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Input and output files must be different. Aborting.\n");
 		exit(EXIT_FAILURE);
 	}
-	/* Initialize hash leaves */
-	leaf = (struct hash_leaf *)malloc(sizeof(struct hash_leaf) * 65536);
-	if (!leaf) goto oom;
-	start = &hash_top[0];
-	for (i=0; i < 65536; i++) {
-		*start = leaf;
-		leaf->entries = 0;
-		leaf->next = NULL;
-		start++;
-		leaf++;
-	}
 
 	/* Set up signal handler */
 	memset (&act, 0, sizeof(act));
@@ -523,6 +512,18 @@ int main(int argc, char **argv)
 	}
 
 	if (!strncmp(argv[1], "add", PATH_MAX)) {
+		/* Initialize hash leaves */
+		leaf = (struct hash_leaf *)malloc(sizeof(struct hash_leaf) * 65536);
+		if (!leaf) goto oom;
+		start = &hash_top[0];
+		for (i=0; i < 65536; i++) {
+			*start = leaf;
+			leaf->entries = 0;
+			leaf->next = NULL;
+			start++;
+			leaf++;
+		}
+
 		if (argc > 4) {
 			start_offset = atoi(argv[argc - 3]);
 			if (start_offset >= B_SIZE) goto usage;
