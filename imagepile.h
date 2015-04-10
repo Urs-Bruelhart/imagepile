@@ -5,6 +5,9 @@
 #ifndef IMAGEPILE_H
 #define IMAGEPILE_H
 
+#include <stdio.h>
+#include <stdint.h>
+#include <limits.h>
 #include "jody_hash.h"
 
 #define VER "0.1"
