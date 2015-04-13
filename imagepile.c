@@ -147,8 +147,9 @@ oom:
 	exit(EXIT_FAILURE);
 }
 
-/* Read a block from the block database */
-/* This may be enhanced with compression functionality later */
+/* Read a block from the block database
+ * This is written as a separate function so that it may be enhanced
+ * with inline compression functionality later */
 static int read_db_block(void * const restrict blk,
 		const int offset, const struct files_t * const restrict files)
 {
@@ -258,6 +259,7 @@ static int get_block_offset(const void * const restrict blk,
 	return offset;
 }
 
+/* Add an image file to the image pile database */
 static int input_image(const struct files_t * const restrict files,
 		uint32_t start_offset)
 {
@@ -339,6 +341,7 @@ static int input_image(const struct files_t * const restrict files,
 	return 0;
 }
 
+/* Read out an image file that was previously added to the image pile */
 static int output_original(const struct files_t * const restrict files)
 {
 	int i, written = 0;
@@ -438,6 +441,7 @@ error_endsize:
 	exit(EXIT_FAILURE);
 }
 
+
 int main(int argc, char **argv)
 {
 	struct files_t file_vars;
@@ -512,6 +516,12 @@ int main(int argc, char **argv)
 	}
 
 	if (!strncmp(argv[1], "add", PATH_MAX)) {
+		/* Add an image file to the database */
+		if (argc > 4) {
+			start_offset = atoi(argv[argc - 3]);
+			if (start_offset >= B_SIZE) goto usage;
+		}
+
 		/* Initialize hash leaves */
 		leaf = (struct hash_leaf *)malloc(sizeof(struct hash_leaf) * 65536);
 		if (!leaf) goto oom;
@@ -524,10 +534,6 @@ int main(int argc, char **argv)
 			leaf++;
 		}
 
-		if (argc > 4) {
-			start_offset = atoi(argv[argc - 3]);
-			if (start_offset >= B_SIZE) goto usage;
-		}
 		/* Open DB hash index and read it in */
 		if (!(files->hashindex = fopen(files->indexfile, "a+"))) {
 			fprintf(stderr, "Error: cannot open index: %s\n", files->indexfile);
@@ -554,8 +560,10 @@ int main(int argc, char **argv)
 		/* Output final statistics */
 		fprintf(stderr, "Stats: %lu total searches, %lu hash failures\n",
 			stats_total_searches, stats_hash_failures);
-	}
-	if (!strncmp(argv[1], "read", PATH_MAX)) output_original(files);
+	} else if (!strncmp(argv[1], "read", PATH_MAX)) {
+		/* Read an image from the databse */
+		output_original(files);
+	} else goto usage;
 
 	fflush(files->db);
 	fflush(files->in);
@@ -579,7 +587,7 @@ signal_error:
 usage:
 	fprintf(stderr, "\nSpecify a verb and file (use - for stdin/stdout). List of verbs:\n\n");
 	fprintf(stderr, "   add <offset> input_file image_file  - Add to database, produce image_file\n");
-	fprintf(stderr, "         ^-- offset in bytes to shorten the first block (DOS/2K/XP compat)\n");
-	fprintf(stderr, "   read image_file output_file - Read original data for image_file\n");
+	fprintf(stderr, "         ^-- offset in bytes to shorten the first block (DOS/2K/XP compat)\n\n");
+	fprintf(stderr, "   read image_file output_file - Read original data for image_file\n\n");
 	exit(EXIT_FAILURE);
 }

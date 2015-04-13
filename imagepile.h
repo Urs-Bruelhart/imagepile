@@ -11,7 +11,7 @@
 #include "jody_hash.h"
 
 #define VER "0.1"
-#define VERDATE "2014-11-18"
+#define VERDATE "2015-04-13"
 /* #define DEBUG 1 */
 
 #ifdef DEBUG
@@ -20,7 +20,8 @@
 #define DLOG(...)
 #endif
 
-/* Size of IPIL file header in bytes
+/*
+ * Size of IPIL file header in bytes
  * 0-3:  'IPIL' signature
  * 4-7:  Truncate first block size (bytes)
  * 8-11: Last block total size (bytes)

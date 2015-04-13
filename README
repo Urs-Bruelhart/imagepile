@@ -1,4 +1,45 @@
-This is the imagepile utility which will eventually be
-included in the Tritech Service System utilities package.
+            imagepile: a disk image block-level de-duplication tool
+             (C) 2014-2015  by Jody Bruchon <jody@jodybruchon.com>
+            -------------------------------------------------------
 
-For information, email jody@c02ware.com
+Any sufficiently sophisticated computer service department knows the value of
+disk imaging. The ability to take a snapshot of a working system has been an
+invaluable tool for decades. Unfortunately, disk images take up a lot of disk
+space--even if they are compressed. Disk images containing lots of identical
+data (i.e. two disk images containing the same operating system version) tend
+to result in massive amounts of unnecessarily duplicated data. This is okay
+if there are only a few images and if those images are relatively small, but
+there are many situations where more than "a few" images may be necessary.
+Taking snapshots of multiple computers in a small business that are mostly
+identical while serving different purposes and using different software is
+one such situation; maintaining "bare" and "full" images that contain just an
+OS and the OS plus a standard set of installed programs is another.
+
+'imagepile' solves the problem of massively duplicated data between raw disk
+images. When you add an image to the "image pile," this program checks them
+block-by-block against all of the blocks previously stored there, including
+previous blocks from the same image. If the blocks are identical, no new data
+is stored in the pile to store that block. This can result in staggering disk
+space savings because the only data that can expand the image pile database
+is unique data, and many disk images tend to have large amounts of repeated
+blocks throughout.
+
+Image data is stored in three separate files:
+
+* A database "imagepile.db" stores all of the raw data blocks,
+* A hash index "imagepile.hash_index" stores the hashes for DB blocks, and
+* Various "*.ipil" files store the DB block offsets that make up the image.
+
+'imagepile' operates on blocks that are 4,096 bytes (4 KiB) in size by
+default. This number was chosen because Advanced Format hard drives and
+most modern filesystems (NTFS and practically every Linux filesystem) are
+all oriented around physical and logical blocks of this size or a multiple
+of this size. Because of the fact that Windows prior to Windows Vista would
+partition drives in such a way as to be compatible with ancient C/H/S drive
+geometry standards and those modes of partitioning frequently would cause
+an entire drive's first partition to start on a sector boundary indivisible
+by 4,096 bytes, imagepile supports the addition of image data with an offset
+that will artificially pad the input data to align it correctly.
+
+The hash index is not necessary for the sole purpose of reading image data
+out of the image database (though it is mandatory for adding more data).
