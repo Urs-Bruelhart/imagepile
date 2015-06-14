@@ -49,7 +49,7 @@ static int find_hash_match(const hash_t hash, const int reset)
 {
 	static struct hash_leaf * restrict leaf;
 	static struct hash_node * restrict node;
-	static int rel_offset;	/* Offset in current table */
+	static unsigned int rel_offset;	/* Offset in current table */
 	static int dirty = 1;	/* Always reset on first run */
 
 	DLOG("find_hash_match: hash %016lx, r %d, d %d\n", hash, reset, dirty);
@@ -104,8 +104,8 @@ static int index_hash(const hash_t hash, const int offset, const int write,
 	struct hash_leaf *leaf;
 	struct hash_node *node;
 
-	if (write) DLOG("index_hash: %016lx (write)\n", hash);
-	else DLOG("index_hash: %016lx\n", hash);
+	if (write) { DLOG("index_hash: %016lx (write)\n", hash); }
+	else { DLOG("index_hash: %016lx\n", hash); }
 
 	leaf = hash_top[HASH_HEAD(hash)];
 
@@ -196,7 +196,7 @@ static int compare_blocks(const void *blk1, const int offset,
 
 /* Append a block to the block db, returning offset in B_SIZE blocks */
 /* This may be enhanced with compression functionality later */
-static int add_db_block(const void * const restrict blk, hash_t hash,
+static int add_db_block(const void * const restrict blk,
 		const struct files_t * const restrict files)
 {
 	int offset;
@@ -244,7 +244,7 @@ static int get_block_offset(const void * const restrict blk,
 
 	/* Hash not found in the hash list, so add it to the database */
 	siglock = 1;
-	offset = add_db_block(blk, hash, files);
+	offset = add_db_block(blk, files);
 	/* ...and add it to the hash index */
 	index_hash(hash, offset, 1, files);
 	DLOG("Indexed new hash at offset %d\n", offset);

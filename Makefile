@@ -1,7 +1,8 @@
 CC=gcc
 CFLAGS=-O3 -g
 #CFLAGS=-Og -g3
-BUILD_CFLAGS=-std=gnu99 -I. -D_FILE_OFFSET_BITS=64 -pipe -Wall -pedantic
+BUILD_CFLAGS = -std=gnu99 -I. -D_FILE_OFFSET_BITS=64 -pipe -fstrict-aliasing
+BUILD_CFLAGS += -Wall -Wextra -Wcast-align -Wstrict-aliasing -pedantic -Wstrict-overflow
 #LDFLAGS=-s -Wl,--gc-sections
 LDFLAGS=
 
