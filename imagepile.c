@@ -164,7 +164,7 @@ static int read_db_block(void * const restrict blk,
 	}
 	i = fread(blk, 1, B_SIZE, files->db);
 	if (i != B_SIZE) {
-		fprintf(stderr, "Error: cannot read block %ld in database (%d read).\n",(off_t)(B_SIZE * offset), i);
+		fprintf(stderr, "Error: cannot read block %d in database (%d read).\n", offset, i);
 		exit(EXIT_FAILURE);
 	}
 	return 0;
