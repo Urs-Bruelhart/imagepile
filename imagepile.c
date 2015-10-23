@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <string.h>
 #include <signal.h>
 #include <errno.h>
@@ -22,12 +23,26 @@
 #include "imagepile.h"
 #include "jody_hash.h"
 
+/* Detect Windows and modify as needed */
+#if defined _WIN32 || defined __CYGWIN__
+ #define ON_WINDOWS 1
+ #define NO_SYMLINKS 1
+ #define NO_PERMS 1
+ #define NO_SIGACTION 1
+ #ifndef WIN32_LEAN_AND_MEAN
+  #define WIN32_LEAN_AND_MEAN
+ #endif
+ #include <windows.h>
+#endif
+
 /* Statistics variables */
 uint64_t stats_total_searches = 0;
 uint64_t stats_hash_failures = 0;
 
 /* Global hash prefix starting array */
 struct hash_leaf *hash_top[65536];
+
+#ifndef NO_SIGACTION
 
 /* Signal stuff */
 int siglock = 0;
@@ -41,6 +56,8 @@ void sig_handler(const int signo)
 		exit(EXIT_FAILURE);
 	} else sigterm = 1;
 }
+
+#endif /* NO_SIGACTION */
 
 /* Find the next instance of a hash in the master hash table.
  * entry is used to resume search in case of a failed match
@@ -243,11 +260,16 @@ static int get_block_offset(const void * const restrict blk,
 	}
 
 	/* Hash not found in the hash list, so add it to the database */
+#ifndef NO_SIGACTION
 	siglock = 1;
+#endif
 	offset = add_db_block(blk, files);
 	/* ...and add it to the hash index */
 	index_hash(hash, offset, 1, files);
 	DLOG("Indexed new hash at offset %d\n", offset);
+
+#ifndef NO_SIGACTION
+	/* If a terminating signal was sent, stop immediately */
 	siglock = 0;
 	if (sigterm) {
 		fflush(files->db);
@@ -255,6 +277,7 @@ static int get_block_offset(const void * const restrict blk,
 		fflush(files->out);
 		exit(EXIT_FAILURE);
 	}
+#endif /* NO_SIGACTION */
 
 	return offset;
 }
@@ -265,7 +288,7 @@ static int input_image(const struct files_t * const restrict files,
 {
 	const uint32_t z = B_SIZE;
 	char blk[B_SIZE];
-	int cnt = B_SIZE;
+	int cnt = 1;
 	off_t size = 1, temp;
 	uint64_t r = 0;
 
@@ -290,6 +313,7 @@ static int input_image(const struct files_t * const restrict files,
 
 		if (start_offset > 0) cnt = fread(blk, 1, (B_SIZE - start_offset), files->in);
 		else cnt = fread(blk, 1, B_SIZE, files->in);
+		DLOG("fread() got %d bytes\n", cnt);
 		if (ferror(files->in)) {
 			fprintf(stderr, "Error reading %s\n", files->infile);
 			exit(EXIT_FAILURE);
@@ -298,8 +322,8 @@ static int input_image(const struct files_t * const restrict files,
 			temp = ftello(files->in);
 			temp /= size;
 			if (temp > percent) {
-				fprintf(stderr, "\r%lu%% complete (%ld hash fails) ",
-					temp, stats_hash_failures);
+				fprintf(stderr, "\r%u%% complete (%jd hash fails) ",
+					(unsigned int)temp, (intmax_t)stats_hash_failures);
 				percent = temp;
 			}
 		}
@@ -310,6 +334,7 @@ static int input_image(const struct files_t * const restrict files,
 		 * Some images have stray data at the end; we pad that data
 		 * with zeroes and store it as a B_SIZE block. */
 		if (cnt < B_SIZE) {
+			DLOG("Stopping: read count %d < %d\n", cnt, B_SIZE);
 			memset((blk + cnt), 0, (B_SIZE - cnt));
 			/* Write size of final sector(s) and quit */
 			if (feof(files->in)) {
@@ -366,9 +391,10 @@ static int output_original(const struct files_t * const restrict files)
 		temp = ftello(files->in);
 		fseeko(files->in, 0, SEEK_END);
 		size = ftello(files->in);
-		DLOG(stderr, "total size: %ld\n", (long)((B_SIZE / 4) * (size - HDR_SIZE)));
+		DLOG("total size: %jd\n", (intmax_t)((B_SIZE / 4) * (size - HDR_SIZE)));
 		fseeko(files->in, temp, SEEK_SET);
 		size /= 100;	/* Get 1% value */
+		if (size == 0) size = 1; /* To avoid division by zero later */
 	} else fprintf(stderr, "Reading from stdin; progress display unavailable\n");
 
 	/* Get offsets stored in the header */
@@ -388,7 +414,7 @@ static int output_original(const struct files_t * const restrict files)
 			temp = ftello(files->in);
 			temp /= size;
 			if (temp > percent) {
-				fprintf(stderr, "\r%lu%% complete", temp);
+				fprintf(stderr, "\r%u%% complete", (unsigned int)temp);
 				percent = temp;
 			}
 		}
@@ -396,12 +422,15 @@ static int output_original(const struct files_t * const restrict files)
 		while (i > 0) {
 			/* Read the data block specified by the offset */
 			offset = (off_t)(B_SIZE * (off_t)*p);
+			DLOG("seeking to block %jd\n", offset);
 			if (fseeko(files->db, offset, SEEK_SET)) goto error_db;
+			DLOG("reading a block\n");
 			if (!fread(data, B_SIZE, 1, files->db)) goto error_db;
 			if (ferror(files->db)) goto error_db;
 
 			/* Handle the last block */
 			if ((i == 1) && feof(files->in)) {
+				DLOG("writing final block of size %jd\n", (intmax_t)end_size);
 				w = fwrite(data, 1, end_size, files->out);
 				written += w;
 				break;
@@ -455,7 +484,9 @@ int main(int argc, char **argv)
 	struct hash_leaf *leaf;
 	uint32_t start_offset = 0;
 	int offset = 0;
+#ifndef NO_SIGACTION
 	struct sigaction act;
+#endif
 
 	fprintf(stderr, "Imagepile disk image database utility %s (%s)\n", VER, VERDATE);
 	/* Handle arguments */
@@ -474,7 +505,7 @@ int main(int argc, char **argv)
 	strncpy(files->infile, argv[argc - 2], PATH_MAX);
 	strncpy(files->outfile, argv[argc - 1], PATH_MAX);
 
-	DLOG("Using: db %s, idx %s, in %s, out %s\n",
+	DLOG("Using: db %s, idx %s,\nin %s, out %s\n",
 			files->dbfile, files->indexfile,
 			files->infile, files->outfile);
 
@@ -483,6 +514,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+#ifndef NO_SIGACTION
 	/* Set up signal handler */
 	memset (&act, 0, sizeof(act));
 	act.sa_handler = sig_handler;
@@ -490,9 +522,10 @@ int main(int argc, char **argv)
 	if (sigaction(SIGTERM, &act, 0)) goto signal_error;
 	if (sigaction(SIGABRT, &act, 0)) goto signal_error;
 	if (sigaction(SIGHUP, &act, 0)) goto signal_error;
+#endif /* NO_SIGACTION */
 
 	/* Open master block database */
-	if (!(files->db = fopen(files->dbfile, "a+"))) {
+	if (!(files->db = fopen(files->dbfile, "a+b"))) {
 		fprintf(stderr, "Error: cannot open DB: %s\n", files->dbfile);
 		exit(EXIT_FAILURE);
 	}
@@ -501,7 +534,7 @@ int main(int argc, char **argv)
 	if (!strncmp(files->infile, "-", PATH_MAX)) {
 		/* fprintf(stderr, "Reading from stdin\n"); */
 		files->in = stdin;
-	} else if (!(files->in = fopen(files->infile, "r"))) {
+	} else if (!(files->in = fopen(files->infile, "rb"))) {
 		fprintf(stderr, "Error: cannot open infile: %s\n", files->infile);
 		exit(EXIT_FAILURE);
 	}
@@ -510,7 +543,7 @@ int main(int argc, char **argv)
 	if (!strncmp(files->outfile, "-", PATH_MAX)) {
 		fprintf(stderr, "Writing to stdout\n");
 		files->out = stdout;
-	} else if (!(files->out = fopen(files->outfile, "w"))) {
+	} else if (!(files->out = fopen(files->outfile, "wb"))) {
 		fprintf(stderr, "Error: cannot open outfile: %s\n", files->outfile);
 		exit(EXIT_FAILURE);
 	}
@@ -535,7 +568,7 @@ int main(int argc, char **argv)
 		}
 
 		/* Open DB hash index and read it in */
-		if (!(files->hashindex = fopen(files->indexfile, "a+"))) {
+		if (!(files->hashindex = fopen(files->indexfile, "a+b"))) {
 			fprintf(stderr, "Error: cannot open index: %s\n", files->indexfile);
 			exit(EXIT_FAILURE);
 		}
@@ -558,8 +591,9 @@ int main(int argc, char **argv)
 		fflush(files->hashindex);
 		fclose(files->hashindex);
 		/* Output final statistics */
-		fprintf(stderr, "Stats: %lu total searches, %lu hash failures\n",
-			stats_total_searches, stats_hash_failures);
+		fprintf(stderr, "Stats: %ju total searches, %ju hash failures\n",
+			(intmax_t)stats_total_searches,
+			(intmax_t)stats_hash_failures);
 	} else if (!strncmp(argv[1], "read", PATH_MAX)) {
 		/* Read an image from the databse */
 		output_original(files);
@@ -580,9 +614,11 @@ oom:
 	fprintf(stderr, "Error: out of memory\n");
 	exit(EXIT_FAILURE);
 
+#ifndef NO_SIGACTION
 signal_error:
 	fprintf(stderr, "Cannot catch signals, aborting.\n");
 	exit(EXIT_FAILURE);
+#endif /* NO_SIGACTION */
 
 usage:
 	fprintf(stderr, "\nSpecify a verb and file (use - for stdin/stdout). List of verbs:\n\n");
