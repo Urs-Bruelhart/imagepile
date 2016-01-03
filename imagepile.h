@@ -56,7 +56,7 @@ struct files_t {
 /* Hash leaf table entries */
 struct hash_node {
 	hash_t hash;	/* Final hash */
-	uint32_t offset;	/* Offset (in B_SIZE blocks) into master DB */
+	off_t offset;	/* Offset (in B_SIZE blocks) into master DB */
 };
 
 /* Hash leaves */
