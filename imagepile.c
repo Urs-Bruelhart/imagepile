@@ -1,5 +1,7 @@
 /*
  * Image drop data pile management
+ * Copyright (C) 2014-2016 by Jody Bruchon <jody@jodybruchon.com>
+ * See LICENSE for licensing information
  *
  * Background: We store a lot of Windows disk images. These images consist
  * largely of heavily duplicated data (the vast majority of file data is not
