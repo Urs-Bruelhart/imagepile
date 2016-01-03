@@ -418,6 +418,7 @@ static int output_original(const struct files_t * const restrict files)
 			}
 		}
 		p = (uint32_t *)blk;
+		/* TODO: Queue, reschedule, and merge reads to minimize seeking */
 		while (i > 0) {
 			/* Read the data block specified by the offset */
 			offset = (off_t)(B_SIZE * (off_t)*p);
