@@ -5,7 +5,7 @@
  * a secure hash algorithm, but the calculation is drastically simpler
  * and faster.
  *
- * Copyright (C) 2014-2015 by Jody Bruchon <jody@jodybruchon.com>
+ * Copyright (C) 2014-2016 by Jody Bruchon <jody@jodybruchon.com>
  * Released under The MIT License or GNU GPL v2 (your choice)
  */
 
@@ -14,14 +14,14 @@
 #include "jody_hash.h"
 
 /* DO NOT modify the shift unless you know what you're doing.
- *  * This shift was decided upon after lots of testing and
- *   * changing it will likely cause lots of hash collisions. */
+ * This shift was decided upon after lots of testing and
+ * changing it will likely cause lots of hash collisions. */
 #define JODY_HASH_SHIFT 11
 
 /* The salt value's purpose is to cause each byte in the
- *  * hash_t word to have a positionally dependent variation.
- *   * It is injected into the calculation to prevent a string of
- *    * identical bytes from easily producing an identical hash. */
+ * hash_t word to have a positionally dependent variation.
+ * It is injected into the calculation to prevent a string of
+ * identical bytes from easily producing an identical hash. */
 #define JODY_HASH_SALT 0x1f3d5b79
 
 /* The tail mask table is used for block sizes that are
@@ -48,12 +48,11 @@ static const hash_t tail_mask[] = {
  * hash_t, it is MANDATORY that the caller provide a data buffer
  * which is divisible by sizeof(hash_t). */
 extern hash_t jody_block_hash(const hash_t * restrict data,
-		const hash_t start_hash, const unsigned int count)
+		const hash_t start_hash, const size_t count)
 {
 	register hash_t hash = start_hash;
 	register hash_t element;
-	unsigned int len;
-	hash_t tail;
+	size_t len;
 
 	/* Don't bother trying to hash a zero-length block */
 	if (count == 0) return hash;
@@ -64,9 +63,7 @@ extern hash_t jody_block_hash(const hash_t * restrict data,
 		hash += element;
 		hash += JODY_HASH_SALT;
 		hash = (hash << JODY_HASH_SHIFT) | hash >> (sizeof(hash_t) * 8 - JODY_HASH_SHIFT);
-		hash += (element & (hash_t)0x000000ff);
 		hash ^= element;
-		hash += (element & (hash_t)0xffffff00);
 		hash = (hash << JODY_HASH_SHIFT) | hash >> (sizeof(hash_t) * 8 - JODY_HASH_SHIFT);
 		hash ^= JODY_HASH_SALT;
 		hash += element;
@@ -76,18 +73,14 @@ extern hash_t jody_block_hash(const hash_t * restrict data,
 	/* Handle data tail (for blocks indivisible by sizeof(hash_t)) */
 	len = count & (sizeof(hash_t) - 1);
 	if (len) {
-		element = *data;
-		tail = element;
-		tail += JODY_HASH_SALT;
-		tail &= tail_mask[len];
-		hash += tail;
+		element = *data & tail_mask[len];
+		hash += element;
+		hash += JODY_HASH_SALT;
 		hash = (hash << JODY_HASH_SHIFT) | hash >> (sizeof(hash_t) * 8 - JODY_HASH_SHIFT);
-		hash += (tail & (hash_t)0x000000ff);
-		hash ^= tail;
-		hash += (tail & (hash_t)0xffffff00);
+		hash ^= element;
 		hash = (hash << JODY_HASH_SHIFT) | hash >> (sizeof(hash_t) * 8 - JODY_HASH_SHIFT);
 		hash ^= JODY_HASH_SALT;
-		hash += tail;
+		hash += element;
 	}
 
 	return hash;

@@ -1,5 +1,7 @@
 /*
  * Image drop data pile management
+ * Copyright (C) 2014-2016 by Jody Bruchon <jody@jodybruchon.com>
+ * See LICENSE for licensing information
  *
  * Background: We store a lot of Windows disk images. These images consist
  * largely of heavily duplicated data (the vast majority of file data is not
@@ -63,7 +65,7 @@ void sig_handler(const int signo)
 /* Find the next instance of a hash in the master hash table.
  * entry is used to resume search in case of a failed match
  * Returns offset to match or -1 if no match found */
-static int find_hash_match(const hash_t hash, const int reset)
+static off_t find_hash_match(const hash_t hash, const int reset)
 {
 	static struct hash_leaf * restrict leaf;
 	static struct hash_node * restrict node;
@@ -115,10 +117,9 @@ not_found:
 }
 
 /* Add hash to memory hash table (and optionally to hash index file) */
-static int index_hash(const hash_t hash, const int offset, const int write,
+static int index_hash(const hash_t hash, const off_t offset, const int write,
 		const struct files_t * const restrict files)
 {
-	int i, leaf_cnt = 1;
 	struct hash_leaf *leaf;
 	struct hash_node *node;
 
@@ -133,7 +134,6 @@ static int index_hash(const hash_t hash, const int offset, const int write,
 		if (leaf->entries == HASH_ALLOC_SIZE) {
 			if (leaf->next != NULL) {
 				leaf = leaf->next;
-				leaf_cnt++;
 				continue;
 			} else {
 				/* Allocate and initialize new leaves as needed */
@@ -153,6 +153,7 @@ static int index_hash(const hash_t hash, const int offset, const int write,
 
 	/* Write hash to database if requested */
 	if (write) {
+		size_t i;
 		i = fwrite(&hash, sizeof(hash_t), 1, files->hashindex);
 		if (!i) {
 			fprintf(stderr, "Error: short write to hash index\n");
@@ -169,27 +170,28 @@ oom:
  * This is written as a separate function so that it may be enhanced
  * with inline compression functionality later */
 static int read_db_block(void * const restrict blk,
-		const int offset, const struct files_t * const restrict files)
+		const off_t offset, const struct files_t * const restrict files)
 {
 	int i;
+	size_t j;
 
 	DLOG("read_db_block, offset %d\n", offset);
 	fflush(files->db);
 	i = fseeko(files->db, (off_t)(B_SIZE * (off_t)offset), SEEK_SET);
        	if (i < 0) {
-		fprintf(stderr, "Error: cannot seek to block %d in database.\n", offset);
+		fprintf(stderr, "Error: cannot seek to block %jd in database.\n", (intmax_t)offset);
 		exit(EXIT_FAILURE);
 	}
-	i = fread(blk, 1, B_SIZE, files->db);
-	if (i != B_SIZE) {
-		fprintf(stderr, "Error: cannot read block %d in database (%d read).\n", offset, i);
+	j = fread(blk, 1, B_SIZE, files->db);
+	if (j != B_SIZE) {
+		fprintf(stderr, "Error: cannot read block %jd in database (%jd read).\n", (intmax_t)offset, (intmax_t)j);
 		exit(EXIT_FAILURE);
 	}
 	return 0;
 }
 
 /* Compare an input block against a block in the block database */
-static int compare_blocks(const void *blk1, const int offset,
+static int compare_blocks(const void *blk1, const off_t offset,
 		const struct files_t * const restrict files)
 {
 	const int * const check1 = (int *)blk1;
@@ -218,7 +220,7 @@ static int add_db_block(const void * const restrict blk,
 		const struct files_t * const restrict files)
 {
 	int offset;
-	int i;
+	size_t i;
 
 	/* Seek to end and record the B_SIZE offset for later */
 	DLOG("add_db_block\n");
@@ -234,16 +236,16 @@ static int add_db_block(const void * const restrict blk,
 	return offset;
 
 error_write:
-	fprintf(stderr, "Error: write to block DB failed: %d of %d written\n", i, B_SIZE);
+	fprintf(stderr, "Error: write to block DB failed: %ju of %d written\n", (uintmax_t)i, B_SIZE);
 	exit(EXIT_FAILURE);
 }
 
 /* Add an incoming block to (or find in) the databse; return its offset */
-static int get_block_offset(const void * const restrict blk,
+static off_t get_block_offset(const void * const restrict blk,
 		const struct files_t * const restrict files)
 {
 	hash_t hash;
-	int offset = 0;
+	off_t offset = 0;
 	int reset = 1;
 
 	DLOG("get_block_offset\n");
@@ -289,9 +291,8 @@ static int input_image(const struct files_t * const restrict files,
 {
 	const uint32_t z = B_SIZE;
 	char blk[B_SIZE];
-	int cnt = 1;
+	size_t cnt = 1;
 	off_t size = 1, temp;
-	uint64_t r = 0;
 
 	DLOG("input_image\n");
 	/* Output magic number and first/last sector offsets */
@@ -310,11 +311,11 @@ static int input_image(const struct files_t * const restrict files,
 	/* Read entire input file and hash the blocks, padding if necessary */
 	while (cnt > 0) {
 		uint32_t offset;
-		static int percent = 0;
+		static off_t percent = 0;
 
 		if (start_offset > 0) cnt = fread(blk, 1, (B_SIZE - start_offset), files->in);
 		else cnt = fread(blk, 1, B_SIZE, files->in);
-		DLOG("fread() got %d bytes\n", cnt);
+		DLOG("fread() got %ju bytes\n", (uintmax_t)cnt);
 		if (ferror(files->in)) {
 			fprintf(stderr, "Error reading %s\n", files->infile);
 			exit(EXIT_FAILURE);
@@ -335,7 +336,7 @@ static int input_image(const struct files_t * const restrict files,
 		 * Some images have stray data at the end; we pad that data
 		 * with zeroes and store it as a B_SIZE block. */
 		if (cnt < B_SIZE) {
-			DLOG("Stopping: read count %d < %d\n", cnt, B_SIZE);
+			DLOG("Stopping: read count %ju < %d\n", (uintmax_t)cnt, B_SIZE);
 			memset((blk + cnt), 0, (B_SIZE - cnt));
 			/* Write size of final sector(s) and quit */
 			if (feof(files->in)) {
@@ -345,10 +346,9 @@ static int input_image(const struct files_t * const restrict files,
 				/* Write last block size to disk */
 				fseeko(files->out, 8, SEEK_SET);
 				fwrite(&cnt, 4, 1, files->out);
-				r += cnt;
 				break;
 			} else if (start_offset == 0) {
-				fprintf(stderr, "\nError: short read (%d/%d) but not start or end of image\n", cnt, B_SIZE);
+				fprintf(stderr, "\nError: short read (%ju/%d) but not start or end of image\n", (uintmax_t)cnt, B_SIZE);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -358,7 +358,6 @@ static int input_image(const struct files_t * const restrict files,
 
 		/* Output offset to image file */
 		fwrite(&offset, sizeof(offset), 1, files->out);
-		r += cnt;
 
 		if (feof(files->in)) break;
 	}
@@ -370,8 +369,8 @@ static int input_image(const struct files_t * const restrict files,
 /* Read out an image file that was previously added to the image pile */
 static int output_original(const struct files_t * const restrict files)
 {
-	int i, written = 0;
-	size_t w;
+	int i;
+	size_t w, written = 0;
 	uint32_t start_offset, end_size;
 	char blk[B_SIZE];
 	char data[B_SIZE];
@@ -407,7 +406,7 @@ static int output_original(const struct files_t * const restrict files)
 	/* Read image file and write out original data */
 	while((i = fread(blk, 4, (B_SIZE / 4), files->in))) {
 		off_t offset;
-		static int percent = 0;
+		static off_t percent = 0;
 
 		/* Iterate through block of offsets */
 		if (ferror(files->in)) goto error_in;
@@ -420,6 +419,7 @@ static int output_original(const struct files_t * const restrict files)
 			}
 		}
 		p = (uint32_t *)blk;
+		/* TODO: Queue, reschedule, and merge reads to minimize seeking */
 		while (i > 0) {
 			/* Read the data block specified by the offset */
 			offset = (off_t)(B_SIZE * (off_t)*p);
@@ -480,7 +480,7 @@ int main(int argc, char **argv)
 	char path[PATH_MAX];
 	int i;
 	char *p;
-	unsigned int hashcount = 0;
+	int hashcount = 0;
 	struct hash_leaf **start;
 	struct hash_leaf *leaf;
 	uint32_t start_offset = 0;
@@ -555,7 +555,10 @@ int main(int argc, char **argv)
 	if (!strncmp(argv[1], "add", PATH_MAX)) {
 		/* Add an image file to the database */
 		if (argc > 4) {
-			start_offset = atoi(argv[argc - 3]);
+			char *check;
+			errno = 0;
+			start_offset = (uint32_t)strtol(argv[argc - 3], &check, 10);
+			if (errno || (check == argv[argc - 3])) goto usage;
 			if (start_offset >= B_SIZE) goto usage;
 		}
 

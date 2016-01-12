@@ -1,7 +1,6 @@
 CC=gcc
 CFLAGS=-O3 -g
 #CFLAGS=-Og -g3
-CFLAGS += $(CFLAGS_EXTRA)
 BUILD_CFLAGS = -std=gnu99 -I. -D_FILE_OFFSET_BITS=64 -pipe -fstrict-aliasing
 BUILD_CFLAGS += -Wall -Wextra -Wcast-align -Wstrict-aliasing -pedantic -Wstrict-overflow
 #LDFLAGS=-s -Wl,--gc-sections
@@ -23,6 +22,8 @@ endif
 ifdef DEBUG
 BUILD_CFLAGS += -DDEBUG -g
 endif
+
+BUILD_CFLAGS += $(CFLAGS_EXTRA)
 
 all: imagepile
 

@@ -1,6 +1,6 @@
 /* Jody Bruchon's fast hashing function (headers)
  *
- * Copyright (C) 2014-2015 by Jody Bruchon <jody@jodybruchon.com>
+ * Copyright (C) 2014-2016 by Jody Bruchon <jody@jodybruchon.com>
  * See jody_hash.c for more information.
  */
 
@@ -19,10 +19,10 @@ extern "C" {
 typedef uint64_t hash_t;
 
 /* Version increments when algorithm changes incompatibly */
-#define JODY_HASH_VERSION 1
+#define JODY_HASH_VERSION 3
 
 extern hash_t jody_block_hash(const hash_t * restrict data,
-		const hash_t start_hash, const unsigned int count);
+		const hash_t start_hash, const size_t count);
 
 #ifdef __cplusplus
 }
