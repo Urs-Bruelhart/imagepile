@@ -33,7 +33,7 @@ imagepile: imagepile.o jody_hash.o
 #	gzip -9 < imagepile.8 > imagepile.8.gz
 
 .c.o:
-	$(CC) -c $(BUILD_CFLAGS) $(FUSE_CFLAGS) $(CFLAGS) $<
+	$(CC) -c $(CFLAGS) $(BUILD_CFLAGS) $<
 
 clean:
 	rm -f *.o *~ .*un~ imagepile imagepile.exe debug.log *.?.gz

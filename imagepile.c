@@ -33,6 +33,7 @@
   #define WIN32_LEAN_AND_MEAN
  #endif
  #include <windows.h>
+ #include <io.h>
 #endif
 
 /* Statistics variables */
@@ -533,6 +534,9 @@ int main(int argc, char **argv)
 	/* Open input file */
 	if (!strncmp(files->infile, "-", PATH_MAX)) {
 		/* fprintf(stderr, "Reading from stdin\n"); */
+#ifdef ON_WINDOWS
+		_setmode(_fileno(stdin), _O_BINARY);
+#endif
 		files->in = stdin;
 	} else if (!(files->in = fopen(files->infile, "rb"))) {
 		fprintf(stderr, "Error: cannot open infile: %s\n", files->infile);
