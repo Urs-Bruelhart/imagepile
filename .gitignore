@@ -37,3 +37,10 @@ core
 .gdb_history
 .gdbinit
 
+#
+# other
+#
+
+*.ipil
+*.db
+*.hash_index
