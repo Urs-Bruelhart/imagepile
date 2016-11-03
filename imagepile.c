@@ -194,9 +194,9 @@ static int read_db_block(void * const restrict blk,
 static int compare_blocks(const void *blk1, const off_t offset,
 		const struct files_t * const restrict files)
 {
-	const int * const check1 = (int *)blk1;
-	char blk2[B_SIZE];
-	const int * const check2 = (int *)blk2;
+	int blk2[B_SIZE / sizeof(int)];
+	const int * const check1 = (const int *)blk1;
+	const int * const check2 = blk2;
 
 	DLOG("compare_blocks, offset %d\n", offset);
 
@@ -241,7 +241,7 @@ error_write:
 }
 
 /* Add an incoming block to (or find in) the databse; return its offset */
-static off_t get_block_offset(const void * const restrict blk,
+static uint32_t get_block_offset(const void * const restrict blk,
 		const struct files_t * const restrict files)
 {
 	hash_t hash;
@@ -249,7 +249,7 @@ static off_t get_block_offset(const void * const restrict blk,
 	int reset = 1;
 
 	DLOG("get_block_offset\n");
-	hash = jody_block_hash((hash_t *)blk, 0, B_SIZE);
+	hash = jody_block_hash((const hash_t *)blk, 0, B_SIZE);
 
 	/* Search existing hashes for a match until they are exhausted */
 	while (1) {
@@ -257,7 +257,7 @@ static off_t get_block_offset(const void * const restrict blk,
 		reset = 0;
 		DLOG("get_block_offset: find_hash_match returned %d\n", offset);
 		if (offset < 0) break;
-		if (!compare_blocks(blk, offset, files)) return offset;
+		if (!compare_blocks(blk, offset, files)) return (uint32_t)offset;
 		DLOG("Compare blocks FAILED, offset %d\n", offset);
 		stats_hash_failures++;
 	}
@@ -282,7 +282,7 @@ static off_t get_block_offset(const void * const restrict blk,
 	}
 #endif /* NO_SIGACTION */
 
-	return offset;
+	return (uint32_t)offset;
 }
 
 /* Add an image file to the image pile database */
@@ -369,7 +369,7 @@ static int input_image(const struct files_t * const restrict files,
 /* Read out an image file that was previously added to the image pile */
 static int output_original(const struct files_t * const restrict files)
 {
-	int i;
+	size_t i;
 	size_t w, written = 0;
 	uint32_t start_offset, end_size;
 	char blk[B_SIZE];
@@ -478,13 +478,13 @@ int main(int argc, char **argv)
 	struct files_t * const restrict files = &file_vars;
 	char blk[B_SIZE];
 	char path[PATH_MAX];
-	int i;
+	size_t i;
 	char *p;
 	int hashcount = 0;
 	struct hash_leaf **start;
 	struct hash_leaf *leaf;
 	uint32_t start_offset = 0;
-	int offset = 0;
+	size_t offset = 0;
 #ifndef NO_SIGACTION
 	struct sigaction act;
 #endif
