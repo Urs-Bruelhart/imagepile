@@ -632,5 +632,6 @@ usage:
 	fprintf(stderr, "   add <offset> input_file image_file  - Add to database, produce image_file\n");
 	fprintf(stderr, "         ^-- offset in bytes to shorten the first block (DOS/2K/XP compat)\n\n");
 	fprintf(stderr, "   read image_file output_file - Read original data for image_file\n\n");
+	fprintf(stderr, "The IMGDIR environment variable determines where the image pile is located\n\n");
 	exit(EXIT_FAILURE);
 }
