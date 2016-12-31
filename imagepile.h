@@ -1,9 +1,12 @@
-/*
- * Image pile headers
- */
+/* Image drop data pile headers
+ * See imagepile.c for copyright information */
 
 #ifndef IMAGEPILE_H
 #define IMAGEPILE_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdio.h>
 #include <stdint.h>
@@ -65,5 +68,9 @@ struct hash_leaf {
 	unsigned int entries;	
 	struct hash_node node[HASH_ALLOC_SIZE];
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* IMAGEPILE_H */

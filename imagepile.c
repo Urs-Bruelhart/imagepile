@@ -1,6 +1,6 @@
 /*
  * Image drop data pile management
- * Copyright (C) 2014-2016 by Jody Bruchon <jody@jodybruchon.com>
+ * Copyright (C) 2014-2017 by Jody Bruchon <jody@jodybruchon.com>
  * See LICENSE for licensing information
  *
  * Background: We store a lot of Windows disk images. These images consist
