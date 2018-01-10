@@ -41,8 +41,8 @@ extern "C" {
 /* Hash type and macro definitions */
 typedef uint16_t hash_head_t;
 
-/* Extract hash_head_t from a hash_t */
-#define HASH_HEAD(x) (hash_head_t)(x >> ((sizeof(hash_t) - sizeof(hash_head_t)) * 8))
+/* Extract hash_head_t from a jodyhash_t */
+#define HASH_HEAD(x) (hash_head_t)(x >> ((sizeof(jodyhash_t) - sizeof(hash_head_t)) * 8))
 
 /* Master block database */
 struct files_t {
@@ -58,7 +58,7 @@ struct files_t {
 
 /* Hash leaf table entries */
 struct hash_node {
-	hash_t hash;	/* Final hash */
+	jodyhash_t hash;	/* Final hash */
 	off_t offset;	/* Offset (in B_SIZE blocks) into master DB */
 };
 

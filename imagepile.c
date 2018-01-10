@@ -65,7 +65,7 @@ void sig_handler(const int signo)
 /* Find the next instance of a hash in the master hash table.
  * entry is used to resume search in case of a failed match
  * Returns offset to match or -1 if no match found */
-static off_t find_hash_match(const hash_t hash, const int reset)
+static off_t find_hash_match(const jodyhash_t hash, const int reset)
 {
 	static struct hash_leaf * restrict leaf;
 	static struct hash_node * restrict node;
@@ -117,7 +117,7 @@ not_found:
 }
 
 /* Add hash to memory hash table (and optionally to hash index file) */
-static int index_hash(const hash_t hash, const off_t offset, const int write,
+static int index_hash(const jodyhash_t hash, const off_t offset, const int write,
 		const struct files_t * const restrict files)
 {
 	struct hash_leaf *leaf;
@@ -154,7 +154,7 @@ static int index_hash(const hash_t hash, const off_t offset, const int write,
 	/* Write hash to database if requested */
 	if (write) {
 		size_t i;
-		i = fwrite(&hash, sizeof(hash_t), 1, files->hashindex);
+		i = fwrite(&hash, sizeof(jodyhash_t), 1, files->hashindex);
 		if (!i) {
 			fprintf(stderr, "Error: short write to hash index\n");
 			exit(EXIT_FAILURE);
@@ -244,12 +244,12 @@ error_write:
 static uint32_t get_block_offset(const void * const restrict blk,
 		const struct files_t * const restrict files)
 {
-	hash_t hash;
+	jodyhash_t hash;
 	off_t offset = 0;
 	int reset = 1;
 
 	DLOG("get_block_offset\n");
-	hash = jody_block_hash((const hash_t *)blk, 0, B_SIZE);
+	hash = jody_block_hash((const jodyhash_t *)blk, 0, B_SIZE);
 
 	/* Search existing hashes for a match until they are exhausted */
 	while (1) {
@@ -579,7 +579,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Error: cannot open index: %s\n", files->indexfile);
 			exit(EXIT_FAILURE);
 		}
-		while ((i = fread(blk, sizeof(hash_t), (B_SIZE / sizeof(hash_t)), files->hashindex))) {
+		while ((i = fread(blk, sizeof(jodyhash_t), (B_SIZE / sizeof(jodyhash_t)), files->hashindex))) {
 			if (ferror(files->hashindex)) {
 				fprintf(stderr, "Error: can't read index: %s\n", files->indexfile);
 				exit(EXIT_FAILURE);
@@ -587,7 +587,7 @@ int main(int argc, char **argv)
 			/* Add each B_SIZE wide block of hashes to the in-memory hash index */
 			offset = 0;
 			while (offset < i) {
-				index_hash((hash_t)*((hash_t *)blk + offset), hashcount, 0, files);
+				index_hash((jodyhash_t)*((jodyhash_t *)blk + offset), hashcount, 0, files);
 				offset++;
 				hashcount++;
 			}
