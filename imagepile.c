@@ -477,7 +477,7 @@ int main(int argc, char **argv)
 	struct files_t file_vars;
 	struct files_t * const restrict files = &file_vars;
 	char blk[B_SIZE];
-	char path[PATH_MAX];
+	char path[PATH_MAX + 1];
 	size_t i;
 	char *p;
 	int hashcount = 0;
